@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       })
 
       // Create material issue record
-      const materialIssue = await tx.materialIssue.create({
+      const materialIssue = await tx.materialIssuance.create({
         data: {
           batchId,
           materialId,
