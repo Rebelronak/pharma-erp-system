@@ -1,6 +1,6 @@
 /**
  * Pharma ERP System
- * Copyright (c) 2026 [Your Name]. All rights reserved.
+ * Copyright (c) 2026 Rebelronak (Ronak Kanani). All rights reserved.
  * Licensed under the MIT License.
  */
 

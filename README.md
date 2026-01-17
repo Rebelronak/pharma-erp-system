@@ -4,7 +4,7 @@ A comprehensive, production-ready ERP system for pharmaceutical manufacturing, i
 
 ---
 
-**Copyright © 2026 [Your Name]. All rights reserved.**
+**Copyright © 2026 Rebelronak (Ronak Kanani). All rights reserved.**
 
 ## 🚀 Features
 
