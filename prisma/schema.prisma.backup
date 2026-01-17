@@ -1,0 +1,942 @@
+// This is your Prisma schema file
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER & AUTH
+// ============================================
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      UserRole @default(USER)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdPurchaseOrders  PurchaseOrder[]    @relation("CreatedByUser")
+  approvedQAApprovals    QAApproval[]       @relation("ApprovedByUser")
+  createdSalesInvoices   SalesInvoice[]     @relation("CreatedByUser")
+  auditLogs              AuditLog[]
+}
+
+enum UserRole {
+  ADMIN
+  PRODUCTION
+  QA_QC
+  DOCTOR
+  ACCOUNTANT
+  USER
+}
+
+// ============================================
+// MATERIAL MANAGEMENT
+// ============================================
+model Material {
+  id              String       @id @default(uuid())
+  code            String       @unique
+  name            String
+  type            MaterialType
+  unit            String       // kg, liters, pieces
+  reorderLevel    Float        @default(0)
+  expiryDaysAlert Int          @default(30)
+  description     String?
+  active          Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  rawInventory      RawInventory[]
+  processInventory  ProcessInventory[]
+  finishedInventory FinishedInventory[]
+  purchaseOrderItems PurchaseOrderItem[]
+  materialIssuances MaterialIssuance[]
+  salesInvoiceItems SalesInvoiceItem[]
+}
+
+enum MaterialType {
+  RAW
+  PROCESS
+  FINISHED
+}
+
+// ============================================
+// INVENTORY - RAW MATERIALS
+// ============================================
+model RawInventory {
+  id            String   @id @default(uuid())
+  materialId    String
+  quantity      Float
+  lotNumber     String
+  expiryDate    DateTime?
+  receivedDate  DateTime @default(now())
+  purchasePrice Float
+  supplierId    String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  material Material @relation(fields: [materialId], references: [id])
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+
+  @@index([materialId])
+  @@index([supplierId])
+  @@index([expiryDate])
+}
+
+// ============================================
+// INVENTORY - PROCESS (Work-in-Process)
+// ============================================
+model ProcessInventory {
+  id         String   @id @default(uuid())
+  materialId String
+  batchId    String
+  quantity   Float
+  startDate  DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  material Material @relation(fields: [materialId], references: [id])
+  batch    Batch    @relation(fields: [batchId], references: [id])
+
+  @@index([materialId])
+  @@index([batchId])
+}
+
+// ============================================
+// INVENTORY - FINISHED GOODS
+// ============================================
+model FinishedInventory {
+  id            String   @id @default(uuid())
+  materialId    String
+  batchId       String
+  quantity      Float
+  lotNumber     String
+  expiryDate    DateTime
+  approvedDate  DateTime @default(now())
+  available     Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  material Material @relation(fields: [materialId], references: [id])
+  batch    Batch    @relation(fields: [batchId], references: [id])
+
+  @@index([materialId])
+  @@index([batchId])
+  @@index([expiryDate])
+}
+
+// ============================================
+// BATCH MANUFACTURING
+// ============================================
+model Batch {
+  id              String      @id @default(uuid())
+  batchNumber     String      @unique
+  productId       String
+  plannedQuantity Float
+  actualQuantity  Float       @default(0)
+  status          BatchStatus @default(IN_PROCESS)
+  startDate       DateTime    @default(now())
+  completionDate  DateTime?
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  materialIssuances MaterialIssuance[]
+  processInventory  ProcessInventory[]
+  finishedInventory FinishedInventory[]
+  qaApproval        QAApproval?
+}
+
+enum BatchStatus {
+  IN_PROCESS
+  COMPLETED
+  QA_PENDING
+  QA_APPROVED
+  QA_REJECTED
+}
+
+// ============================================
+// MATERIAL ISSUANCE (Raw → Process)
+// ============================================
+model MaterialIssuance {
+  id         String   @id @default(uuid())
+  batchId    String
+  materialId String
+  quantity   Float
+  issuedDate DateTime @default(now())
+  issuedBy   String
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  batch    Batch    @relation(fields: [batchId], references: [id])
+  material Material @relation(fields: [materialId], references: [id])
+
+  @@index([batchId])
+  @@index([materialId])
+}
+
+// ============================================
+// QA / QC APPROVAL
+// ============================================
+model QAApproval {
+  id           String        @id @default(uuid())
+  batchId      String        @unique
+  status       ApprovalStatus @default(PENDING)
+  inspectorId  String
+  inspectionDate DateTime?
+  approvalDate DateTime?
+  rejectionReason String?
+  remarks      String?
+  testResults  String?       // JSON string
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  batch     Batch @relation(fields: [batchId], references: [id])
+  inspector User  @relation("ApprovedByUser", fields: [inspectorId], references: [id])
+
+  @@index([batchId])
+  @@index([inspectorId])
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ============================================
+// SUPPLIERS
+// ============================================
+model Supplier {
+  id            String   @id @default(uuid())
+  code          String   @unique
+  name          String
+  contactPerson String?
+  phone         String?
+  email         String?
+  address       String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  purchaseOrders PurchaseOrder[]
+  rawInventory   RawInventory[]
+}
+
+// ============================================
+// PURCHASE ORDERS
+// ============================================
+model PurchaseOrder {
+  id            String             @id @default(uuid())
+  orderNumber   String             @unique
+  supplierId    String
+  orderDate     DateTime           @default(now())
+  expectedDate  DateTime?
+  receivedDate  DateTime?
+  status        PurchaseOrderStatus @default(PENDING)
+  totalAmount   Float              @default(0)
+  notes         String?
+  createdById   String
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  supplier  Supplier             @relation(fields: [supplierId], references: [id])
+  createdBy User                 @relation("CreatedByUser", fields: [createdById], references: [id])
+  items     PurchaseOrderItem[]
+
+  @@index([supplierId])
+  @@index([createdById])
+}
+
+enum PurchaseOrderStatus {
+  PENDING
+  RECEIVED
+  PARTIAL
+  CANCELLED
+}
+
+model PurchaseOrderItem {
+  id              String   @id @default(uuid())
+  purchaseOrderId String
+  materialId      String
+  quantity        Float
+  unitPrice       Float
+  totalPrice      Float
+  receivedQty     Float    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  material      Material      @relation(fields: [materialId], references: [id])
+
+  @@index([purchaseOrderId])
+  @@index([materialId])
+}
+
+// ============================================
+// DOCTORS & PATIENTS
+// ============================================
+model Doctor {
+  id              String   @id @default(uuid())
+  code            String   @unique
+  name            String
+  specialization  String
+  phone           String?
+  email           String?
+  licenseNumber   String?
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  surgeries     Surgery[]
+  prescriptions Prescription[]
+}
+
+model Patient {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  age       Int
+  gender    String
+  phone     String?
+  email     String?
+  address   String?
+  medicalHistory String?  // JSON string
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  surgeries     Surgery[]
+  prescriptions Prescription[]
+}
+
+model Surgery {
+  id            String   @id @default(uuid())
+  surgeryNumber String   @unique
+  patientId     String
+  doctorId      String
+  surgeryType   String
+  surgeryDate   DateTime
+  notes         String?
+  outcome       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  patient       Patient        @relation(fields: [patientId], references: [id])
+  doctor        Doctor         @relation(fields: [doctorId], references: [id])
+  prescriptions Prescription[]
+
+  @@index([patientId])
+  @@index([doctorId])
+}
+
+model Prescription {
+  id              String   @id @default(uuid())
+  prescriptionNumber String @unique
+  patientId       String
+  doctorId        String
+  surgeryId       String?
+  prescriptionDate DateTime @default(now())
+  diagnosis       String?
+  medicines       String   // JSON: [{materialId, batchId, quantity, dosage}]
+  instructions    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id])
+  doctor  Doctor  @relation(fields: [doctorId], references: [id])
+  surgery Surgery? @relation(fields: [surgeryId], references: [id])
+
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([surgeryId])
+}
+
+// ============================================
+// SALES & INVOICING
+// ============================================
+model SalesInvoice {
+  id            String   @id @default(uuid())
+  invoiceNumber String   @unique
+  customerName  String
+  customerContact String?
+  invoiceDate   DateTime @default(now())
+  totalAmount   Float    @default(0)
+  status        String   @default("PAID")
+  notes         String?
+  createdById   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  createdBy User               @relation("CreatedByUser", fields: [createdById], references: [id])
+  items     SalesInvoiceItem[]
+
+  @@index([createdById])
+}
+
+model SalesInvoiceItem {
+  id             String   @id @default(uuid())
+  salesInvoiceId String
+  materialId     String
+  batchNumber    String
+  quantity       Float
+  unitPrice      Float
+  totalPrice     Float
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  salesInvoice SalesInvoice @relation(fields: [salesInvoiceId], references: [id], onDelete: Cascade)
+  material     Material     @relation(fields: [materialId], references: [id])
+
+  @@index([salesInvoiceId])
+  @@index([materialId])
+}
+
+// ============================================
+// AUDIT LOGS
+// ============================================
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String
+  entity    String
+  entityId  String
+  oldValue  String?  // JSON
+  newValue  String?  // JSON
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entity])
+  @@index([createdAt])
+}
+
+// ==================== USER MANAGEMENT ====================
+enum UserRole {
+  ADMIN
+  PRODUCTION_MANAGER
+  QA_QC_INSPECTOR
+  ACCOUNTANT
+  DOCTOR
+  INVENTORY_MANAGER
+  SALES_MANAGER
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  password      String
+  name          String
+  role          UserRole
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  auditLogs          AuditLog[]
+  purchaseOrders     PurchaseOrder[]
+  salesInvoices      SalesInvoice[]
+  batchesCreated     Batch[]         @relation("BatchCreator")
+  qaApprovals        QAApproval[]
+  doctorProfile      Doctor?
+  materialIssues     MaterialIssue[]
+
+  @@map("users")
+}
+
+// ==================== MATERIALS & INVENTORY ====================
+enum MaterialType {
+  RAW
+  PROCESS
+  FINISHED
+}
+
+model Material {
+  id              String       @id @default(cuid())
+  code            String       @unique
+  name            String
+  type            MaterialType
+  description     String?
+  unitOfMeasure   String // kg, liters, units, etc.
+  reorderLevel    Float        @default(100)
+  standardCost    Float        @default(0)
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Relations
+  rawInventory          RawInventory[]
+  processInventory      ProcessInventory[]
+  finishedGoodsInventory FinishedGoodsInventory[]
+  purchaseOrderItems    PurchaseOrderItem[]
+  batchMaterials        BatchMaterial[]
+  salesInvoiceItems     SalesInvoiceItem[]
+  materialIssues        MaterialIssue[]
+  stockAlerts           StockAlert[]
+
+  @@map("materials")
+}
+
+// Raw Inventory - Stores purchased raw materials
+model RawInventory {
+  id              String   @id @default(cuid())
+  materialId      String
+  quantity        Float
+  batchNumber     String?
+  expiryDate      DateTime?
+  lotNumber       String?
+  supplierId      String?
+  purchaseDate    DateTime?
+  purchasePrice   Float?
+  location        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  material        Material @relation(fields: [materialId], references: [id])
+  supplier        Supplier? @relation(fields: [supplierId], references: [id])
+
+  @@index([materialId])
+  @@map("raw_inventory")
+}
+
+// Process Inventory - Work-in-Process materials in batches
+model ProcessInventory {
+  id              String   @id @default(cuid())
+  materialId      String
+  batchId         String
+  quantity        Float
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  material        Material @relation(fields: [materialId], references: [id])
+  batch           Batch    @relation(fields: [batchId], references: [id])
+
+  @@index([materialId])
+  @@index([batchId])
+  @@map("process_inventory")
+}
+
+// Finished Goods Inventory - QA approved products ready for sale
+model FinishedGoodsInventory {
+  id              String   @id @default(cuid())
+  materialId      String
+  batchId         String
+  quantity        Float
+  expiryDate      DateTime?
+  manufacturedDate DateTime
+  approvedDate    DateTime
+  location        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  material        Material @relation(fields: [materialId], references: [id])
+  batch           Batch    @relation(fields: [batchId], references: [id])
+
+  @@index([materialId])
+  @@index([batchId])
+  @@map("finished_goods_inventory")
+}
+
+// ==================== SUPPLIERS ====================
+model Supplier {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  name            String
+  contactPerson   String?
+  email           String?
+  phone           String?
+  address         String?
+  taxId           String?
+  paymentTerms    String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  purchaseOrders  PurchaseOrder[]
+  rawInventory    RawInventory[]
+
+  @@map("suppliers")
+}
+
+// ==================== BATCH MANUFACTURING ====================
+enum BatchStatus {
+  IN_PROCESS
+  READY_FOR_QA
+  QA_APPROVED
+  QA_REJECTED
+  COMPLETED
+  CANCELLED
+}
+
+model Batch {
+  id                String       @id @default(cuid())
+  batchNumber       String       @unique
+  productId         String
+  plannedQuantity   Float
+  actualQuantity    Float?
+  status            BatchStatus  @default(IN_PROCESS)
+  startDate         DateTime
+  completionDate    DateTime?
+  expiryDate        DateTime?
+  createdById       String
+  notes             String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  // Relations
+  product           Material     @relation(fields: [productId], references: [id])
+  createdBy         User         @relation("BatchCreator", fields: [createdById], references: [id])
+  materials         BatchMaterial[]
+  processInventory  ProcessInventory[]
+  finishedGoods     FinishedGoodsInventory[]
+  qaApprovals       QAApproval[]
+  materialIssues    MaterialIssue[]
+
+  @@index([batchNumber])
+  @@index([status])
+  @@map("batches")
+}
+
+model BatchMaterial {
+  id              String   @id @default(cuid())
+  batchId         String
+  materialId      String
+  requiredQuantity Float
+  actualQuantity  Float?
+  issuedAt        DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  batch           Batch    @relation(fields: [batchId], references: [id])
+  material        Material @relation(fields: [materialId], references: [id])
+
+  @@map("batch_materials")
+}
+
+// Material Issue - Tracks movement from Raw to Process Inventory
+model MaterialIssue {
+  id              String   @id @default(cuid())
+  batchId         String
+  materialId      String
+  quantity        Float
+  issuedById      String
+  issuedDate      DateTime @default(now())
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  batch           Batch    @relation(fields: [batchId], references: [id])
+  material        Material @relation(fields: [materialId], references: [id])
+  issuedBy        User     @relation(fields: [issuedById], references: [id])
+
+  @@map("material_issues")
+}
+
+// ==================== QA / QC MANAGEMENT ====================
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model QAApproval {
+  id              String         @id @default(cuid())
+  batchId         String
+  inspectorId     String
+  status          ApprovalStatus @default(PENDING)
+  inspectionDate  DateTime       @default(now())
+  approvalDate    DateTime?
+  testResults     String? // JSON or detailed test results
+  remarks         String?
+  rejectionReason String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  batch           Batch    @relation(fields: [batchId], references: [id])
+  inspector       User     @relation(fields: [inspectorId], references: [id])
+
+  @@map("qa_approvals")
+}
+
+// ==================== PURCHASE & SALES ====================
+enum OrderStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  RECEIVED
+  COMPLETED
+  CANCELLED
+}
+
+model PurchaseOrder {
+  id              String      @id @default(cuid())
+  poNumber        String      @unique
+  supplierId      String
+  orderDate       DateTime    @default(now())
+  expectedDate    DateTime?
+  receivedDate    DateTime?
+  status          OrderStatus @default(PENDING)
+  totalAmount     Float       @default(0)
+  createdById     String
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  supplier        Supplier    @relation(fields: [supplierId], references: [id])
+  createdBy       User        @relation(fields: [createdById], references: [id])
+  items           PurchaseOrderItem[]
+
+  @@index([poNumber])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id              String   @id @default(cuid())
+  purchaseOrderId String
+  materialId      String
+  quantity        Float
+  unitPrice       Float
+  totalPrice      Float
+  receivedQuantity Float   @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  material        Material      @relation(fields: [materialId], references: [id])
+
+  @@map("purchase_order_items")
+}
+
+model SalesInvoice {
+  id              String   @id @default(cuid())
+  invoiceNumber   String   @unique
+  customerName    String
+  customerEmail   String?
+  customerPhone   String?
+  customerAddress String?
+  invoiceDate     DateTime @default(now())
+  dueDate         DateTime?
+  status          OrderStatus @default(PENDING)
+  totalAmount     Float    @default(0)
+  taxAmount       Float    @default(0)
+  grandTotal      Float    @default(0)
+  createdById     String
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  createdBy       User     @relation(fields: [createdById], references: [id])
+  items           SalesInvoiceItem[]
+  medicalRecords  MedicalRecord[]
+
+  @@index([invoiceNumber])
+  @@map("sales_invoices")
+}
+
+model SalesInvoiceItem {
+  id              String   @id @default(cuid())
+  salesInvoiceId  String
+  materialId      String
+  batchNumber     String?
+  quantity        Float
+  unitPrice       Float
+  totalPrice      Float
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  salesInvoice    SalesInvoice @relation(fields: [salesInvoiceId], references: [id])
+  material        Material     @relation(fields: [materialId], references: [id])
+
+  @@map("sales_invoice_items")
+}
+
+// ==================== DOCTOR & MEDICAL WORKFLOW ====================
+model Doctor {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  licenseNumber   String   @unique
+  specialization  String
+  phone           String?
+  department      String?
+  hospitalName    String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id])
+  surgeries       Surgery[]
+  prescriptions   Prescription[]
+  medicalRecords  MedicalRecord[]
+
+  @@map("doctors")
+}
+
+model Patient {
+  id              String   @id @default(cuid())
+  patientNumber   String   @unique
+  name            String
+  dateOfBirth     DateTime?
+  gender          String?
+  phone           String?
+  email           String?
+  address         String?
+  bloodGroup      String?
+  allergies       String?
+  medicalHistory  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  surgeries       Surgery[]
+  prescriptions   Prescription[]
+  medicalRecords  MedicalRecord[]
+
+  @@map("patients")
+}
+
+model Surgery {
+  id              String   @id @default(cuid())
+  surgeryNumber   String   @unique
+  patientId       String
+  doctorId        String
+  surgeryType     String
+  surgeryDate     DateTime
+  duration        Int? // in minutes
+  outcome         String?
+  complications   String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  patient         Patient  @relation(fields: [patientId], references: [id])
+  doctor          Doctor   @relation(fields: [doctorId], references: [id])
+  medicinesUsed   SurgeryMedicine[]
+
+  @@map("surgeries")
+}
+
+model SurgeryMedicine {
+  id              String   @id @default(cuid())
+  surgeryId       String
+  medicineName    String
+  batchNumber     String?
+  quantity        Float
+  unitOfMeasure   String
+  administeredAt  DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  surgery         Surgery  @relation(fields: [surgeryId], references: [id])
+
+  @@map("surgery_medicines")
+}
+
+model Prescription {
+  id              String   @id @default(cuid())
+  prescriptionNumber String @unique
+  patientId       String
+  doctorId        String
+  prescriptionDate DateTime @default(now())
+  diagnosis       String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  patient         Patient  @relation(fields: [patientId], references: [id])
+  doctor          Doctor   @relation(fields: [doctorId], references: [id])
+  medicines       PrescriptionMedicine[]
+
+  @@map("prescriptions")
+}
+
+model PrescriptionMedicine {
+  id              String   @id @default(cuid())
+  prescriptionId  String
+  medicineName    String
+  dosage          String
+  frequency       String
+  duration        String
+  quantity        Float?
+  instructions    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  prescription    Prescription @relation(fields: [prescriptionId], references: [id])
+
+  @@map("prescription_medicines")
+}
+
+model MedicalRecord {
+  id              String   @id @default(cuid())
+  recordNumber    String   @unique
+  patientId       String
+  doctorId        String
+  visitDate       DateTime @default(now())
+  chiefComplaint  String
+  diagnosis       String?
+  treatment       String?
+  prescriptionId  String?
+  salesInvoiceId  String?
+  followUpDate    DateTime?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  patient         Patient  @relation(fields: [patientId], references: [id])
+  doctor          Doctor   @relation(fields: [doctorId], references: [id])
+  salesInvoice    SalesInvoice? @relation(fields: [salesInvoiceId], references: [id])
+
+  @@map("medical_records")
+}
+
+// ==================== ALERTS & NOTIFICATIONS ====================
+enum AlertType {
+  LOW_STOCK
+  NEAR_EXPIRY
+  EXPIRED
+  BATCH_REJECTED
+  QA_PENDING
+}
+
+model StockAlert {
+  id              String    @id @default(cuid())
+  materialId      String
+  alertType       AlertType
+  message         String
+  isResolved      Boolean   @default(false)
+  resolvedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  material        Material  @relation(fields: [materialId], references: [id])
+
+  @@index([isResolved])
+  @@map("stock_alerts")
+}
+
+// ==================== AUDIT LOGS ====================
+model AuditLog {
+  id              String   @id @default(cuid())
+  userId          String?
+  action          String
+  entity          String
+  entityId        String?
+  changes         String? // JSON format
+  ipAddress       String?
+  userAgent       String?
+  createdAt       DateTime @default(now())
+
+  user            User?    @relation(fields: [userId], references: [id])
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

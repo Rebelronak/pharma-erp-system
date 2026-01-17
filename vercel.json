@@ -1,0 +1,13 @@
+{
+  "$comment": "Pharma ERP System - Copyright (c) 2026 [Your Name]. All rights reserved.",
+  "buildCommand": "prisma generate && next build",
+  "outputDirectory": ".next",
+  "devCommand": "next dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "env": {
+    "DATABASE_URL": "@database_url",
+    "NEXTAUTH_SECRET": "@nextauth_secret",
+    "NEXTAUTH_URL": "@nextauth_url"
+  }
+}
