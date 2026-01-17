@@ -7,11 +7,7 @@ export async function GET() {
     const surgeries = await prisma.surgery.findMany({
       include: {
         patient: true,
-        doctor: {
-          include: {
-            user: true
-          }
-        },
+        doctor: true,
         medicinesUsed: true,
       },
       orderBy: { surgeryDate: 'desc' }
@@ -36,7 +32,6 @@ export async function POST(request: NextRequest) {
         doctorId: body.doctorId,
         surgeryType: body.surgeryType,
         surgeryDate: new Date(body.surgeryDate),
-        duration: body.duration,
         outcome: body.outcome,
         complications: body.complications,
         notes: body.notes,
@@ -52,11 +47,7 @@ export async function POST(request: NextRequest) {
       },
       include: {
         patient: true,
-        doctor: {
-          include: {
-            user: true
-          }
-        },
+        doctor: true,
         medicinesUsed: true,
       }
     })

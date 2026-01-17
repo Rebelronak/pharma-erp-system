@@ -49,7 +49,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         await tx.purchaseOrderItem.update({
           where: { id: item.id },
           data: {
-            receivedQuantity: item.quantity
+            receivedQty: item.quantity
           }
         })
       }
@@ -70,9 +70,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     await prisma.auditLog.create({
       data: {
         action: 'RECEIVE_PURCHASE_ORDER',
-        entity: 'PurchaseOrder',
-        entityId: id,
-        changes: JSON.stringify(result),
+        entity: 'PurchaseOrder',\n        entityId: id,
       }
     })
 

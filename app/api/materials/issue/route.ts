@@ -59,20 +59,8 @@ export async function POST(request: NextRequest) {
           batchId,
           materialId,
           quantity,
-          issuedById,
+          issuedBy: issuedById,
           issuedDate: new Date(),
-        }
-      })
-
-      // Update batch material actual quantity
-      await tx.batchMaterial.updateMany({
-        where: {
-          batchId,
-          materialId,
-        },
-        data: {
-          actualQuantity: { increment: quantity },
-          issuedAt: new Date(),
         }
       })
 
@@ -86,7 +74,6 @@ export async function POST(request: NextRequest) {
         action: 'ISSUE_MATERIAL',
         entity: 'MaterialIssue',
         entityId: result.materialIssue.id,
-        changes: JSON.stringify(result),
       }
     })
 

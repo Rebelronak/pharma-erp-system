@@ -8,13 +8,7 @@ export async function GET() {
     const prescriptions = await prisma.prescription.findMany({
       include: {
         patient: true,
-        doctor: {
-          include: {
-            user: {
-              select: { id: true, name: true, email: true }
-            }
-          }
-        },
+        doctor: true,
         medicines: true,
       },
       orderBy: { createdAt: 'desc' }
@@ -53,11 +47,7 @@ export async function POST(request: NextRequest) {
       },
       include: {
         patient: true,
-        doctor: {
-          include: {
-            user: true
-          }
-        },
+        doctor: true,
         medicines: true,
       }
     })
