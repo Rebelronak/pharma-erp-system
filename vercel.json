@@ -1,5 +1,4 @@
 {
-  "$comment": "Pharma ERP System - Copyright (c) 2026 Rebelronak (Ronak Kanani). All rights reserved.",
   "buildCommand": "prisma generate && next build",
   "outputDirectory": ".next",
   "devCommand": "next dev",
