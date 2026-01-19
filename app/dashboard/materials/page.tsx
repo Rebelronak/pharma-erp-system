@@ -29,11 +29,12 @@ export default function MaterialsPage() {
     fetch('/api/materials')
       .then(r => r.json())
       .then(data => {
-        setMaterials(data)
+        setMaterials(Array.isArray(data) ? data : [])
         setLoading(false)
       })
       .catch(err => {
         console.error(err)
+        setMaterials([])
         setLoading(false)
       })
   }
