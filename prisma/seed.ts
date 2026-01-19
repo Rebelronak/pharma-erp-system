@@ -22,7 +22,7 @@ async function main() {
   console.log('✅ Created admin user:', admin.email)
 
   // Create QA inspector
-  const qaPassword = await hashPassword('QA@123')
+  const qaPassword = await bcrypt.hash('QA@123', 10)
   const qaInspector = await prisma.user.upsert({
     where: { email: 'qa@pharmaerp.com' },
     update: {},
@@ -31,13 +31,13 @@ async function main() {
       password: qaPassword,
       name: 'QA Inspector',
       role: 'QA_QC_INSPECTOR',
-      isActive: true,
+      active: true,
     },
   })
   console.log('Created QA user:', qaInspector.email)
 
   // Create doctor user
-  const doctorPassword = await hashPassword('Doctor@123')
+  const doctorPassword = await bcrypt.hash('Doctor@123', 10)
   const doctorUser = await prisma.user.upsert({
     where: { email: 'doctor@pharmaerp.com' },
     update: {},
@@ -46,23 +46,22 @@ async function main() {
       password: doctorPassword,
       name: 'Dr. Sarah Johnson',
       role: 'DOCTOR',
-      isActive: true,
+      active: true,
     },
   })
   console.log('Created doctor user:', doctorUser.email)
 
   // Create doctor profile
   const doctor = await prisma.doctor.upsert({
-    where: { userId: doctorUser.id },
+    where: { code: 'DOC-001' },
     update: {},
     create: {
-      userId: doctorUser.id,
-      licenseNumber: 'MD-2026-001',
+      code: 'DOC-001',
+      name: 'Dr. Sarah Johnson',
       specialization: 'General Surgery',
       phone: '+1234567890',
-      department: 'Surgery',
-      hospitalName: 'City General Hospital',
-      isActive: true,
+      email: 'doctor@pharmaerp.com',
+      active: true,
     },
   })
   console.log('Created doctor profile')
@@ -78,9 +77,7 @@ async function main() {
       email: 'sales@pharmachem.com',
       phone: '+1987654321',
       address: '123 Industrial Park, Medical City',
-      taxId: 'TAX123456',
-      paymentTerms: 'Net 30',
-      isActive: true,
+      active: true,
     },
   })
   console.log('Created supplier:', supplier.name)
@@ -94,10 +91,9 @@ async function main() {
       name: 'Paracetamol API',
       type: 'RAW',
       description: 'Active Pharmaceutical Ingredient - Paracetamol',
-      unitOfMeasure: 'kg',
+      unit: 'kg',
       reorderLevel: 100,
-      standardCost: 50.00,
-      isActive: true,
+      active: true,
     },
   })
   console.log('Created material:', paracetamol.name)
@@ -110,29 +106,25 @@ async function main() {
       name: 'Paracetamol 500mg Tablets',
       type: 'FINISHED',
       description: 'Finished product - Paracetamol tablets 500mg',
-      unitOfMeasure: 'units',
+      unit: 'pieces',
       reorderLevel: 1000,
-      standardCost: 0.50,
-      isActive: true,
+      active: true,
     },
   })
   console.log('Created finished product:', paracetamolTablet.name)
 
   // Create sample patient
   const patient = await prisma.patient.upsert({
-    where: { patientNumber: 'PT-SAMPLE01' },
+    where: { code: 'PAT-001' },
     update: {},
     create: {
-      patientNumber: 'PT-SAMPLE01',
+      code: 'PAT-001',
       name: 'Jane Doe',
-      dateOfBirth: new Date('1990-05-15'),
-      gender: 'Female',
+      age: 35,
+      gender: 'FEMALE',
       phone: '+1122334455',
-      email: 'jane.doe@example.com',
       address: '456 Patient Street, Medical City',
-      bloodGroup: 'O+',
-      allergies: 'None known',
-      medicalHistory: 'Generally healthy',
+      active: true,
     },
   })
   console.log('Created sample patient:', patient.name)

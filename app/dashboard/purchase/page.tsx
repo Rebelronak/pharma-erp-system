@@ -10,8 +10,8 @@ import { ArrowLeft } from 'lucide-react'
 
 export default function PurchasePage() {
   const router = useRouter()
-  const [orders, setOrders] = useState([])
-  const [suppliers, setSuppliers] = useState([])
+  const [orders, setOrders] = useState<any[]>([])
+  const [suppliers, setSuppliers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({

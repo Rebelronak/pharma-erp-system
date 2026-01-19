@@ -8,7 +8,6 @@ export async function GET() {
       include: {
         patient: true,
         doctor: true,
-        medicinesUsed: true,
       },
       orderBy: { surgeryDate: 'desc' }
     })
@@ -33,22 +32,11 @@ export async function POST(request: NextRequest) {
         surgeryType: body.surgeryType,
         surgeryDate: new Date(body.surgeryDate),
         outcome: body.outcome,
-        complications: body.complications,
         notes: body.notes,
-        medicinesUsed: {
-          create: body.medicinesUsed?.map((med: any) => ({
-            medicineName: med.medicineName,
-            batchNumber: med.batchNumber,
-            quantity: med.quantity,
-            unitOfMeasure: med.unitOfMeasure,
-            administeredAt: new Date(med.administeredAt || new Date()),
-          })) || []
-        }
       },
       include: {
         patient: true,
         doctor: true,
-        medicinesUsed: true,
       }
     })
 

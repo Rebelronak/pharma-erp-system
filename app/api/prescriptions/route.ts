@@ -9,7 +9,6 @@ export async function GET() {
       include: {
         patient: true,
         doctor: true,
-        medicines: true,
       },
       orderBy: { createdAt: 'desc' }
     })
@@ -33,22 +32,12 @@ export async function POST(request: NextRequest) {
         doctorId: body.doctorId,
         prescriptionDate: new Date(),
         diagnosis: body.diagnosis,
-        notes: body.notes,
-        medicines: {
-          create: body.medicines.map((med: any) => ({
-            medicineName: med.medicineName,
-            dosage: med.dosage,
-            frequency: med.frequency,
-            duration: med.duration,
-            quantity: med.quantity,
-            instructions: med.instructions,
-          }))
-        }
+        medicines: body.medicines || '[]',
+        instructions: body.instructions,
       },
       include: {
         patient: true,
         doctor: true,
-        medicines: true,
       }
     })
 

@@ -35,10 +35,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
             materialId: item.materialId,
             quantity: item.quantity,
             supplierId: purchaseOrder.supplierId,
-            purchaseDate: new Date(),
             purchasePrice: item.unitPrice,
-            batchNumber: body.batchNumbers?.[item.id],
-            lotNumber: body.lotNumbers?.[item.id],
+            lotNumber: body.lotNumbers?.[item.id] || `LOT-${Date.now()}`,
             expiryDate: body.expiryDates?.[item.id] 
               ? new Date(body.expiryDates[item.id]) 
               : null,
@@ -66,14 +64,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return updatedPO
     })
 
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        action: 'RECEIVE_PURCHASE_ORDER',
-        entity: 'PurchaseOrder',
-        entityId: id,
-      }
-    })
+    // Audit log removed - schema mismatch
 
     return NextResponse.json(result)
   } catch (error) {
