@@ -71,13 +71,6 @@ export default function MaterialsPage() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5" />
-            <span>Back to Dashboard</span>
-          </button>
           <h1 className="text-3xl font-bold">Materials</h1>
         </div>
         <Button onClick={() => setShowForm(!showForm)}>

@@ -27,11 +27,13 @@ export default function QAQCPage() {
       fetch('/api/qa-approvals').then(r => r.json()),
       fetch('/api/batches').then(r => r.json())
     ]).then(([approvalsData, batchesData]) => {
-      setApprovals(approvalsData)
+      const approvals = Array.isArray(approvalsData) ? approvalsData : []
+      const batches = Array.isArray(batchesData) ? batchesData : []
+      setApprovals(approvals)
       
       // Filter out batches that already have QA approvals
-      const approvedBatchIds = approvalsData.map((a: any) => a.batchId)
-      const availableBatches = batchesData.filter(
+      const approvedBatchIds = approvals.map((a: any) => a.batchId)
+      const availableBatches = batches.filter(
         (b: any) => !approvedBatchIds.includes(b.id)
       )
       
@@ -39,6 +41,8 @@ export default function QAQCPage() {
       setLoading(false)
     }).catch(err => {
       console.error(err)
+      setApprovals([])
+      setBatches([])
       setLoading(false)
     })
   }
@@ -100,13 +104,7 @@ export default function QAQCPage() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5" />
-            <span>Back to Dashboard</span>
-          </button>
+
           <h1 className="text-3xl font-bold">QA/QC Approvals</h1>
         </div>
         <Button onClick={() => setShowForm(!showForm)}>

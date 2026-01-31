@@ -27,14 +27,18 @@ export default function PurchasePage() {
       fetch('/api/purchase-orders').then(r => r.json()),
       fetch('/api/suppliers').then(r => r.json())
     ]).then(([ordersData, suppliersData]) => {
-      setOrders(ordersData)
-      setSuppliers(suppliersData)
+      const orders = Array.isArray(ordersData) ? ordersData : []
+      const suppliers = Array.isArray(suppliersData) ? suppliersData : []
+      setOrders(orders)
+      setSuppliers(suppliers)
       setLoading(false)
-      if (suppliersData.length > 0) {
-        setFormData(prev => ({...prev, supplierId: suppliersData[0].id}))
+      if (suppliers.length > 0) {
+        setFormData(prev => ({...prev, supplierId: suppliers[0].id}))
       }
     }).catch(err => {
       console.error(err)
+      setOrders([])
+      setSuppliers([])
       setLoading(false)
     })
   }
@@ -75,13 +79,6 @@ export default function PurchasePage() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5" />
-            <span>Back to Dashboard</span>
-          </button>
           <h1 className="text-3xl font-bold">Purchase Orders</h1>
         </div>
         <button

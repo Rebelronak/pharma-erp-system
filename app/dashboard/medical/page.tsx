@@ -23,11 +23,13 @@ export default function MedicalPage() {
       fetch('/api/doctors').then(r => r.json()),
       fetch('/api/patients').then(r => r.json())
     ]).then(([docs, pats]) => {
-      setDoctors(docs)
-      setPatients(pats)
+      setDoctors(Array.isArray(docs) ? docs : [])
+      setPatients(Array.isArray(pats) ? pats : [])
       setLoading(false)
     }).catch(err => {
       console.error(err)
+      setDoctors([])
+      setPatients([])
       setLoading(false)
     })
   }
@@ -84,14 +86,7 @@ export default function MedicalPage() {
 
   return (
     <div className="p-8 space-y-8">
-      <div className="flex items-center gap-4">
-        <button
-          onClick={() => router.push('/dashboard')}
-          className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <ArrowLeft className="h-5 w-5" />
-          <span>Back to Dashboard</span>
-        </button>
+      <div className="flex items-center gap-4 mb-6">
         <h1 className="text-3xl font-bold">Medical Management</h1>
       </div>
 
